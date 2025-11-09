@@ -10,7 +10,6 @@ from skimage.measure import regionprops, label, shannon_entropy
 from PIL import Image
 import pandas as pd
 import os
-import gdown
 from lime_explainer import explain_with_lime
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -23,16 +22,11 @@ st.markdown(
 )
 
 # --------------------------------
-# 1️⃣ Model Selection (Google Drive IDs)
+# 1️⃣ Model Selection (predefined paths)
 # --------------------------------
 model_choices = {
-    "VGG16": "1JwpNMwkvTeI8y1pC_LexEXurVIHWBNt8",      # Replace with your Drive file ID
-    "ResNet50": "15yqATv0VEb_tKNBbjsDpAqw7u-MG86od"   # Replace with your Drive file ID
-}
-
-model_local_paths = {
-    "VGG16": "models/vgg16_model.h5",
-    "ResNet50": "models/resnet50_model.h5"
+    "VGG16": r"D:\XAI_Feature_Extraction\vgg16_model.h5",
+    "ResNet50": r"D:\XAI_Feature_Extraction\resnet50_model.h5"
 }
 
 # --------------------------------
@@ -51,34 +45,23 @@ with st.sidebar:
 labels = [s.strip() for s in class_labels.split(",") if s.strip()]
 
 # --------------------------------
-# 2️⃣ Download and Load Model
+# Load selected model
 # --------------------------------
 @st.cache_resource
-def download_and_load_model(drive_id, local_path):
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-    if not os.path.exists(local_path):
-        st.info(f"Downloading model to {local_path} ...")
-        url = f"https://drive.google.com/uc?id={drive_id}"
-        gdown.download(url, local_path, quiet=False)
+def load_selected_model(path):
     try:
-        model = load_model(local_path, compile=False)
+        model = load_model(path)
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-model = download_and_load_model(
-    model_choices[selected_model],
-    model_local_paths[selected_model]
-)
-
-if model is not None:
-    st.sidebar.success(f"Loaded model: {selected_model}")
-else:
-    st.stop()
+model_path = model_choices[selected_model]
+st.sidebar.success(f"Loaded model: {selected_model}")
+model = load_selected_model(model_path)
 
 # --------------------------------
-# 3️⃣ Image Upload Section
+# 2️⃣ Image Upload Section
 # --------------------------------
 st.header("🩸 Upload Leukemia Cell Image")
 uploaded_img = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg", "jpeg", "png"])
@@ -189,7 +172,7 @@ if uploaded_img is not None and model is not None:
 
                 highlighted = img_original.copy()
                 cv2.rectangle(highlighted, (int(most['minc']), int(most['minr'])),
-                              (int(most['maxc']), int(most['maxr'])), (0, 255, 0), 3)
+                            (int(most['maxc']), int(most['maxr'])), (0, 255, 0), 3)
                 st.image(highlighted, caption="Most Influential Region", width=400)
 
                 # Feature importance bar plot
