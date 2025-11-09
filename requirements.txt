@@ -1,11 +1,21 @@
-numpy
-pandas
-tensorflow
-keras
-scikit‑learn
-matplotlib
-opencv‑python
-Pillow
-lime
-flask
-gunicorn
+# Web framework
+streamlit==1.28.0
+
+# Core ML libraries
+numpy==1.26.5
+pandas==2.1.1
+tensorflow==2.15.0
+keras==2.15.0
+scikit-learn==1.3.1
+matplotlib==3.8.1
+opencv-python==4.8.1.78
+Pillow==10.1.0
+
+# Explainable AI
+lime==0.2.2.1
+
+# Utilities for Streamlit & logging
+rich==14.2.0
+markdown-it-py==4.0.0
+pygments==2.19.2
+mdurl==0.1.2
