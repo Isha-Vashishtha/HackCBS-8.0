@@ -2,7 +2,6 @@
 import streamlit as st
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -11,6 +10,7 @@ from PIL import Image
 import pandas as pd
 import os
 from lime_explainer import explain_with_lime
+import gdown
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
@@ -22,11 +22,18 @@ st.markdown(
 )
 
 # --------------------------------
-# 1️⃣ Model Selection (predefined paths)
+# 1️⃣ Model Selection (Google Drive URLs)
 # --------------------------------
-model_choices = {
+model_urls = {
     "VGG16": "https://drive.google.com/uc?id=1JwpNMwkvTeI8y1pC_LexEXurVIHWBNt8",
     "ResNet50": "https://drive.google.com/uc?id=15yqATv0VEb_tKNBbjsDpAqw7u-MG86od"
+}
+
+# Local paths for downloaded models
+os.makedirs("models", exist_ok=True)
+model_paths = {
+    "VGG16": "models/vgg16_model.h5",
+    "ResNet50": "models/resnet50_model.h5"
 }
 
 # --------------------------------
@@ -34,7 +41,7 @@ model_choices = {
 # --------------------------------
 with st.sidebar:
     st.header("⚙️ Configuration")
-    selected_model = st.selectbox("Select Model", list(model_choices.keys()))
+    selected_model = st.selectbox("Select Model", list(model_urls.keys()))
     xai_method = st.radio("Select XAI Method", ["Grad-CAM", "LIME"])
     threshold = st.slider("Heatmap Threshold", 100, 255, 180)
     class_labels = st.text_area(
@@ -43,6 +50,13 @@ with st.sidebar:
     )
 
 labels = [s.strip() for s in class_labels.split(",") if s.strip()]
+
+# --------------------------------
+# Download model if not exists
+# --------------------------------
+if not os.path.exists(model_paths[selected_model]):
+    st.info(f"Downloading {selected_model} model from Google Drive...")
+    gdown.download(model_urls[selected_model], model_paths[selected_model], quiet=False)
 
 # --------------------------------
 # Load selected model
@@ -56,7 +70,7 @@ def load_selected_model(path):
         st.error(f"Error loading model: {e}")
         return None
 
-model_path = model_choices[selected_model]
+model_path = model_paths[selected_model]
 st.sidebar.success(f"Loaded model: {selected_model}")
 model = load_selected_model(model_path)
 
@@ -74,17 +88,13 @@ if uploaded_img is not None and model is not None:
     # XAI Method Selection
     # --------------------------
     if xai_method == "Grad-CAM":
-        # --------------------------
         # Preprocess image
-        # --------------------------
         img_size = (224, 224)
         img_resized = pil_img.resize(img_size)
         x = np.expand_dims(np.array(img_resized).astype(np.float32), axis=0)
         x_pre = tf.keras.applications.vgg16.preprocess_input(x)
 
-        # --------------------------
         # Prediction
-        # --------------------------
         preds = model.predict(x_pre)
         preds = np.squeeze(preds)
         pred_class = int(np.argmax(preds))
@@ -97,9 +107,7 @@ if uploaded_img is not None and model is not None:
         pred_label = labels[pred_class]
         st.markdown(f"### ✅ Prediction: **{pred_label}**  ({confidence:.2f}%)")
 
-        # --------------------------
         # Grad-CAM Computation
-        # --------------------------
         last_conv_layer_name = None
         for layer in reversed(model.layers):
             if isinstance(layer, tf.keras.layers.Conv2D):
@@ -135,9 +143,7 @@ if uploaded_img is not None and model is not None:
             st.subheader("🔥 Grad-CAM Heatmap")
             st.image(superimposed, width=400)
 
-            # --------------------------
             # Region Feature Extraction
-            # --------------------------
             _, thresh_img = cv2.threshold(heatmap_255, threshold, 255, cv2.THRESH_BINARY)
             labeled = label(thresh_img)
             regions = regionprops(labeled)
@@ -215,13 +221,8 @@ if uploaded_img is not None and model is not None:
                     st.error(f"Error while plotting radar chart: {e}")
 
     elif xai_method == "LIME":
-        # --------------------------
         # LIME Explanation
-        # --------------------------
         pred_label, confidence, lime_img_bound = explain_with_lime(model, pil_img, labels)
         st.markdown(f"### ✅ Prediction: **{pred_label}**  ({confidence:.2f}%)")
         st.subheader("🌈 LIME Explanation")
         st.image(lime_img_bound, use_column_width=True)
-
-
-
