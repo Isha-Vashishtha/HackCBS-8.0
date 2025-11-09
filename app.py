@@ -25,8 +25,8 @@ st.markdown(
 # 1️⃣ Model Selection (predefined paths)
 # --------------------------------
 model_choices = {
-    "VGG16": "models/vgg16_model.h5",
-    "ResNet50": "models/resnet50_model.h5"
+    "VGG16": "https://drive.google.com/file/d/1JwpNMwkvTeI8y1pC_LexEXurVIHWBNt8/view?usp=sharing",
+    "ResNet50": "https://drive.google.com/file/d/15yqATv0VEb_tKNBbjsDpAqw7u-MG86od/view?usp=sharing"
 }
 
 # --------------------------------
@@ -222,4 +222,5 @@ if uploaded_img is not None and model is not None:
         st.markdown(f"### ✅ Prediction: **{pred_label}**  ({confidence:.2f}%)")
         st.subheader("🌈 LIME Explanation")
         st.image(lime_img_bound, use_column_width=True)
+
 
