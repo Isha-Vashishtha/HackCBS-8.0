@@ -1,7 +1,7 @@
 # app.py
 import streamlit as st
 import tensorflow as tf
-from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -22,26 +22,26 @@ st.markdown(
 )
 
 # --------------------------------
-# 1️⃣ Model Selection (Google Drive URLs)
+# 1️⃣ Model Selection (Google Drive IDs)
 # --------------------------------
-model_urls = {
-    "VGG16": "https://drive.google.com/uc?id=1JwpNMwkvTeI8y1pC_LexEXurVIHWBNt8",
-    "ResNet50": "https://drive.google.com/uc?id=15yqATv0VEb_tKNBbjsDpAqw7u-MG86od"
+model_choices = {
+    "VGG16": "1JwpNMwkvTeI8y1pC_LexEXurVIHWBNt8",  # Replace with your actual Drive ID
+    "ResNet50": "15yqATv0VEb_tKNBbjsDpAqw7u-MG86od"
 }
 
-# Local paths for downloaded models
-os.makedirs("models", exist_ok=True)
-model_paths = {
-    "VGG16": "models/vgg16_model.h5",
-    "ResNet50": "models/resnet50_model.h5"
+model_local_paths = {
+    "VGG16": "models/vgg16_model",
+    "ResNet50": "models/resnet50_model"
 }
+
+os.makedirs("models", exist_ok=True)
 
 # --------------------------------
 # Sidebar Configuration
 # --------------------------------
 with st.sidebar:
     st.header("⚙️ Configuration")
-    selected_model = st.selectbox("Select Model", list(model_urls.keys()))
+    selected_model = st.selectbox("Select Model", list(model_choices.keys()))
     xai_method = st.radio("Select XAI Method", ["Grad-CAM", "LIME"])
     threshold = st.slider("Heatmap Threshold", 100, 255, 180)
     class_labels = st.text_area(
@@ -52,27 +52,30 @@ with st.sidebar:
 labels = [s.strip() for s in class_labels.split(",") if s.strip()]
 
 # --------------------------------
-# Download model if not exists
-# --------------------------------
-if not os.path.exists(model_paths[selected_model]):
-    st.info(f"Downloading {selected_model} model from Google Drive...")
-    gdown.download(model_urls[selected_model], model_paths[selected_model], quiet=False)
-
-# --------------------------------
-# Load selected model
+# Download and Load Selected Model
 # --------------------------------
 @st.cache_resource
-def load_selected_model(path):
+def download_and_load_model(drive_id, local_path):
+    if not os.path.exists(local_path):
+        st.info(f"Downloading model to {local_path} ...")
+        url = f"https://drive.google.com/uc?id={drive_id}"
+        gdown.download(url, f"{local_path}.zip", quiet=False)
+        # Unzip if needed
+        import zipfile
+        with zipfile.ZipFile(f"{local_path}.zip", 'r') as zip_ref:
+            zip_ref.extractall(local_path)
     try:
-        model = load_model(path)
+        model = tf.keras.models.load_model(local_path, compile=False)
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-model_path = model_paths[selected_model]
-st.sidebar.success(f"Loaded model: {selected_model}")
-model = load_selected_model(model_path)
+model = download_and_load_model(model_choices[selected_model], model_local_paths[selected_model])
+if model is not None:
+    st.sidebar.success(f"✅ Loaded model: {selected_model}")
+else:
+    st.stop()
 
 # --------------------------------
 # 2️⃣ Image Upload Section
@@ -101,7 +104,6 @@ if uploaded_img is not None and model is not None:
         confidence = float(preds[pred_class]) * 100
 
         if len(labels) != len(preds):
-            st.warning("⚠️ Class label count does not match model outputs.")
             labels = [f"class_{i}" for i in range(len(preds))]
 
         pred_label = labels[pred_class]
@@ -180,45 +182,6 @@ if uploaded_img is not None and model is not None:
                 cv2.rectangle(highlighted, (int(most['minc']), int(most['minr'])),
                             (int(most['maxc']), int(most['maxr'])), (0, 255, 0), 3)
                 st.image(highlighted, caption="Most Influential Region", width=400)
-
-                # Feature importance bar plot
-                try:
-                    st.subheader("📊 Feature Influence of Most Active Region")
-                    features = ['area', 'solidity', 'eccentricity', 'entropy', 'score']
-                    values = [most[f] for f in features]
-
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    bars = ax.barh(features, values, color='mediumseagreen')
-                    ax.set_xlabel("Feature Value")
-                    ax.set_title("Influence of Region Properties on Model Attention")
-
-                    for bar in bars:
-                        ax.text(bar.get_width(), bar.get_y() + bar.get_height()/2,
-                                f"{bar.get_width():.2f}", va='center')
-
-                    st.pyplot(fig)
-                except Exception as e:
-                    st.error(f"Error while plotting feature importance: {e}")
-
-                # Radar chart
-                try:
-                    import math
-                    st.subheader("🕸️ Region Feature Profile (Radar Chart)")
-                    features = ['area', 'solidity', 'eccentricity', 'entropy', 'score']
-                    values = [most[f] for f in features]
-                    values += values[:1]
-
-                    angles = np.linspace(0, 2 * math.pi, len(features), endpoint=False).tolist()
-                    angles += angles[:1]
-
-                    fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
-                    ax.fill(angles, values, color='teal', alpha=0.25)
-                    ax.plot(angles, values, color='teal', linewidth=2)
-                    ax.set_xticks(angles[:-1])
-                    ax.set_xticklabels(features)
-                    st.pyplot(fig)
-                except Exception as e:
-                    st.error(f"Error while plotting radar chart: {e}")
 
     elif xai_method == "LIME":
         # LIME Explanation
