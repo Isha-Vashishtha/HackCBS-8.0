@@ -1,4 +1,4 @@
-# Streamlit for the web app
+# Web app
 streamlit==1.28.0
 
 # Core scientific libraries
@@ -6,7 +6,7 @@ numpy>=1.25,<1.26
 pandas>=2.0.0,<2.1.0
 matplotlib>=3.7.1,<3.8.0
 
-# TensorFlow for ML models
+# TensorFlow
 tensorflow==2.12.0
 
 # Image processing
@@ -20,11 +20,13 @@ shap>=0.42.1
 # HTTP requests / downloading files
 requests>=2.31.0,<3.0.0
 
-# Optional HTML rendering for LIME explanations
+# Pin rich to satisfy Streamlit
+rich==13.3.4
+
+# Optional HTML rendering for LIME
 streamlit-components>=1.2.0
 
-# Misc (if needed for Markdown or plotting inside Streamlit)
+# Misc
 markdown-it-py>=4.0.0
 pygments>=2.19.2
 mdurl>=0.1.2
-
