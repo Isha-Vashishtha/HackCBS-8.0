@@ -1,0 +1,11 @@
+numpy
+pandas
+tensorflow
+keras
+scikit‑learn
+matplotlib
+opencv‑python
+Pillow
+lime
+flask
+gunicorn
